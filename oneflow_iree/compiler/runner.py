@@ -5,10 +5,20 @@ from iree import runtime as ireert
 from iree.compiler import compile_str
 import numpy as np
 
-class Iree:
+class Backend:
+    class NotFoundError(RuntimeError):
+        def __init__(self, arg):
+            self.args = arg
+
+    class NotSupportError(RuntimeError):
+        def __init__(self, arg):
+            self.args = arg
+
+class Iree(Backend):
 
     class Target:
         pass
+
     class Cpu(Target):
         backend = ['dylib-llvm-aot']
         config = 'dylib'
@@ -27,20 +37,20 @@ class Iree:
 
     def __init__(self, target=Cpu):
         self.target = target
-    
+
     def cpu(self):
         self.target = Iree.Cpu
-    
+
     def cuda(self):
         self.target = Iree.Cuda
 
     def generate_tosa(self, graph: Graph):
         self.graph = graph
         [step() for step in (self._get_job, self._convert_job_to_tosa)]
-    
+
     def _get_job(self):
         self.job = str(text_format.MessageToString(self.graph._forward_job_proto))
-    
+
     def _convert_job_to_tosa(self):
         self.tosa = flow._oneflow_internal.nn.graph.ConvertJobToTosaIR(self.job)
 
@@ -58,10 +68,16 @@ class Runner(object):
 
     _tosa_cache = {}
 
-    def __init__(self, raw_graph, backend=Iree):
+    def __init__(self, raw_graph, backend=Iree, return_numpy=True):
         self.raw_graph = raw_graph
-        self.backend = Iree()
-    
+        if backend == Iree or backend == 'iree':
+            self.backend = backend()
+            if not return_numpy:
+                raise Backend.NotSupportError("iree backend only supports return numpy")
+        else:
+            raise Backend.NotFoundError(str(backend) + 'not found')
+        self.return_numpy = return_numpy
+
     def cuda(self):
         self.backend.cuda()
         return self
@@ -97,7 +113,7 @@ class Runner(object):
         ctx = self.backend.generate_context()
         f = ctx.modules.module[config["name"]]
         return f
-    
+
     def _parse_output(self, output):
         if output.is_host_accessible:
             return output
