@@ -4,6 +4,8 @@ from google.protobuf import text_format
 from iree import runtime as ireert
 from iree.compiler import compile_str
 import numpy as np
+import time
+
 
 class Backend:
     class NotFoundError(RuntimeError):
@@ -14,28 +16,54 @@ class Backend:
         def __init__(self, arg):
             self.args = arg
 
-class Iree(Backend):
+    enable_tick: bool
 
+    def __init__(self, enable_tick=True):
+        self.enable_tick = enable_tick
+
+    def tick(self, msg="", reset=False):
+        if self.enable_tick == True:
+            if reset == True:
+                self.timer = time.time()
+                if msg != "" and self.start_timer > 0:
+                    current = time.time()
+                    gap = current - self.timer
+                    self.timer = current
+                    print(msg + ": ")
+                    print("  - stage cost " + str(gap) + 's')
+                    print("  - total cost " + str(current) + 's')
+                else:
+                    print("restart tick")
+                self.start_timer = self.timer
+            else:
+                current = time.time()
+                gap = current - self.timer
+                self.timer = current
+                print(msg + ": ")
+                print("  - stage cost " + str(gap) + 's')
+                print("  - total cost " + str(current) + 's')
+
+
+class Iree(Backend):
     class Target:
         pass
 
     class Cpu(Target):
-        backend = ['dylib-llvm-aot']
-        config = 'dylib'
+        backend = ["dylib-llvm-aot"]
+        config = "dylib"
 
     class Cuda(Target):
-        backend = ['cuda']
-        config = 'cuda'
+        backend = ["cuda"]
+        config = "cuda"
 
     # members
     graph: Graph
-    target: Target
     job: str
     tosa: str
     ctx: ireert.SystemContext
 
-
-    def __init__(self, target=Cpu):
+    def __init__(self, target=Cpu, enable_tick=True):
+        super().__init__(enable_tick)
         self.target = target
 
     def cpu(self):
@@ -44,9 +72,24 @@ class Iree(Backend):
     def cuda(self):
         self.target = Iree.Cuda
 
-    def generate_tosa(self, graph: Graph):
+    def generate_vm_module(self, graph: Graph):
         self.graph = graph
-        [step() for step in (self._get_job, self._convert_job_to_tosa)]
+        self._get_job()
+        self._convert_job_to_tosa()
+        self.tick("convert job to tosa")
+        self._convert_tosa_to_flat_buffer()
+        self.tick("compile tosa to iree bytecode")
+        self._convert_flat_buffer_to_vm_module()
+        self.tick("compile iree bytecode to vm module")
+
+
+    def _convert_tosa_to_flat_buffer(self):
+        self.flat_buffer = compile_str(
+            self.tosa, target_backends=self.target.backend, input_type="tosa"
+        )
+
+    def _convert_flat_buffer_to_vm_module(self):
+        self.vm_module = ireert.VmModule.from_flatbuffer(self.flat_buffer)
 
     def _get_job(self):
         self.job = str(text_format.MessageToString(self.graph._forward_job_proto))
@@ -57,11 +100,9 @@ class Iree(Backend):
     def generate_context(self):
         config = ireert.Config(self.target.config)
         self.ctx = ireert.SystemContext(config=config)
-        flat_buffer = compile_str(self.tosa, target_backends=self.target.backend, input_type='tosa')
-        vm_module = ireert.VmModule.from_flatbuffer(flat_buffer)
-        self.ctx.add_vm_module(vm_module)
+        self.ctx.add_vm_module(self.vm_module)
+        self.tick("create iree vm context")
         return self.ctx
-
 
 
 class Runner(object):
@@ -70,12 +111,12 @@ class Runner(object):
 
     def __init__(self, raw_graph, backend=Iree, return_numpy=True):
         self.raw_graph = raw_graph
-        if backend == Iree or backend == 'iree':
+        if backend == Iree or backend == "iree":
             self.backend = backend()
             if not return_numpy:
                 raise Backend.NotSupportError("iree backend only supports return numpy")
         else:
-            raise Backend.NotFoundError(str(backend) + 'not found')
+            raise Backend.NotFoundError(str(backend) + "not found")
         self.return_numpy = return_numpy
 
     def cuda(self):
@@ -94,7 +135,7 @@ class Runner(object):
             elif isinstance(arg, np.ndarray):
                 res.append(arg)
             else:
-                print('not support class')
+                print("not support class")
                 exit(1)
         return res
 
@@ -104,12 +145,13 @@ class Runner(object):
             graph = self.raw_graph()
             # graph.build_graph(*args, **kwargs)
             graph._compile(*args, **kwargs)
-            self.backend.generate_tosa(graph)
-            Runner._tosa_cache[full_name] = {"name":graph._name, "data":self.backend.tosa}
-
+            self.backend.generate_vm_module(graph)
+            Runner._tosa_cache[full_name] = {
+                "name": graph._name,
+                "data": self.backend.vm_module,
+            }
         config = Runner._tosa_cache[full_name]
-        self.backend.tosa = config["data"]
-
+        self.backend.vm_module = config["data"]
         ctx = self.backend.generate_context()
         f = ctx.modules.module[config["name"]]
         return f
@@ -123,12 +165,13 @@ class Runner(object):
     def _full_name(self):
         full_name = self.raw_graph.__name__
         for elem in self.input:
-            full_name += str(elem.shape) + str(elem.dtype)
+            full_name += str(elem.shape) + str(elem.dtype) + str(self.backend.target)
         return full_name
 
-
     def __call__(self, *args, **kwargs):
+        self.backend.tick(reset=True)
         self.input = self._parse_input(*args, **kwargs)
         function = self._get_function(*args, **kwargs)
         output = function(*self.input)
+        self.backend.tick("run module")
         return self._parse_output(output)
