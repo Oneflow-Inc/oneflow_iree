@@ -16,33 +16,6 @@ class Backend:
         def __init__(self, arg):
             self.args = arg
 
-    enable_tick: bool
-
-    def __init__(self, enable_tick=True):
-        self.enable_tick = enable_tick
-
-    def tick(self, msg="", reset=False):
-        if self.enable_tick == True:
-            if reset == True:
-                self.timer = time.time()
-                if msg != "" and self.start_timer > 0:
-                    current = time.time()
-                    gap = current - self.timer
-                    self.timer = current
-                    print(msg + ": ")
-                    print("  - stage cost " + str(gap) + 's')
-                    print("  - total cost " + str(current) + 's')
-                else:
-                    print("restart tick")
-                self.start_timer = self.timer
-            else:
-                current = time.time()
-                gap = current - self.timer
-                self.timer = current
-                print(msg + ": ")
-                print("  - stage cost " + str(gap) + 's')
-                print("  - total cost " + str(current) + 's')
-
 
 class Iree(Backend):
     class Target:
@@ -62,8 +35,8 @@ class Iree(Backend):
     tosa: str
     ctx: ireert.SystemContext
 
-    def __init__(self, target=Cpu, enable_tick=True):
-        super().__init__(enable_tick)
+    def __init__(self, target=Cpu):
+        super().__init__()
         self.target = target
 
     def cpu(self):
@@ -76,11 +49,8 @@ class Iree(Backend):
         self.graph = graph
         self._get_job()
         self._convert_job_to_tosa()
-        self.tick("convert job to tosa")
         self._convert_tosa_to_flat_buffer()
-        self.tick("compile tosa to iree bytecode")
         self._convert_flat_buffer_to_vm_module()
-        self.tick("compile iree bytecode to vm module")
 
 
     def _convert_tosa_to_flat_buffer(self):
@@ -101,7 +71,6 @@ class Iree(Backend):
         config = ireert.Config(self.target.config)
         self.ctx = ireert.SystemContext(config=config)
         self.ctx.add_vm_module(self.vm_module)
-        self.tick("create iree vm context")
         return self.ctx
 
 
@@ -169,9 +138,7 @@ class Runner(object):
         return full_name
 
     def __call__(self, *args, **kwargs):
-        self.backend.tick(reset=True)
         self.input = self._parse_input(*args, **kwargs)
         function = self._get_function(*args, **kwargs)
         output = function(*self.input)
-        self.backend.tick("run module")
         return self._parse_output(output)
