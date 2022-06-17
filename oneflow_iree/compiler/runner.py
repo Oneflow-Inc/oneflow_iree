@@ -62,7 +62,7 @@ class Iree(Backend):
         self.vm_module = ireert.VmModule.from_flatbuffer(self.flat_buffer)
 
     def _get_job(self):
-        self.job = str(text_format.MessageToString(self.graph._forward_job_proto))
+        self.job = str(text_format.MessageToString(self.graph._full_job_proto))
 
     def _convert_job_to_tosa(self):
         self.tosa = flow._oneflow_internal.nn.graph.ConvertJobToTosaIR(self.job)
