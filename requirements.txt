@@ -1,3 +1,4 @@
 oneflow
-iree-compiler>=20220415.108
-iree-runtime>=20220415.108
+iree-compiler==20220619.177
+iree-runtime==20220619.177
+--find-links https://github.com/google/iree/releases
