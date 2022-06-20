@@ -14,6 +14,10 @@ limitations under the License.
 from __future__ import absolute_import
 import setuptools
 
+reqs = ['oneflow',
+    'protobuf',
+    'iree-compiler==20220619.177',
+    'iree-runtime==20220619.177']
 long_description = (
     "oneflow_iree is a toolkit for converting nn.graph of OneFlow to tosa and running on iree backend.\n\n"
 )
@@ -28,7 +32,7 @@ setuptools.setup(
     long_description_content_type="text/plain",
     packages=setuptools.find_packages(),
     url="https://github.com/Oneflow-Inc/oneflow_iree",
-    install_requires=["oneflow", "protobuf", "iree-compiler", "iree-runtime"],
+    install_requires=reqs,
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Apache Software License",
