@@ -39,4 +39,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     license="Apache 2.0",
+    dependency_links=[
+        "http://peak.telecommunity.com/snapshots/",
+    ],
 )
