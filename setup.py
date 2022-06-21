@@ -15,7 +15,6 @@ from __future__ import absolute_import
 import setuptools
 
 reqs = [
-        'oneflow',
         'protobuf',
         'iree-compiler==20220523.147',
         'iree-runtime==20220523.147'
