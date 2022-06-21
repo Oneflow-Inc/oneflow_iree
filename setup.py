@@ -14,10 +14,13 @@ limitations under the License.
 from __future__ import absolute_import
 import setuptools
 
-reqs = ['oneflow',
-    'protobuf',
-    'iree-compiler==20220619.177',
-    'iree-runtime==20220619.177']
+reqs = [
+        'oneflow',
+        'protobuf',
+        'iree-compiler==20220523.147',
+        'iree-runtime==20220523.147'
+    ]
+
 long_description = (
     "oneflow_iree is a toolkit for converting nn.graph of OneFlow to tosa and running on iree backend.\n\n"
 )
@@ -39,7 +42,4 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     license="Apache 2.0",
-    dependency_links=[
-        "http://peak.telecommunity.com/snapshots/",
-    ],
 )

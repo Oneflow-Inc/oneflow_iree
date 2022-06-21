@@ -1,5 +1,0 @@
-oneflow
-protobuf
-iree-compiler==20220619.177
-iree-runtime==20220619.177
---find-links https://github.com/google/iree/releases
