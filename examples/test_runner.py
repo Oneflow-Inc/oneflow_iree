@@ -39,8 +39,22 @@ class GraphModule(flow.nn.Graph):
     def build(self, x):
         return self.fw(x)
 
+def _test_check_iree_runner_cpu(test_case):
+    func = Runner(GraphModule, return_numpy=True)
+    input = flow.Tensor([-1.0, 1.0])
+    output = func(input)
+    test_case.assertTrue(np.allclose(output, [0., 1.]))
+    # change input shape
+    input = flow.Tensor([-1.0, 1.0, -1])
+    output = func(input)
+    test_case.assertTrue(np.allclose(output, [0., 1., 0.]))
+    # change input shape
+    input = flow.Tensor([-1, 1.0])
+    output = func(input)
+    test_case.assertTrue(np.allclose(output, [0., 1.]))
 
-def _test_check_iree_runner(test_case):
+
+def _test_check_iree_runner_cuda(test_case):
     func = Runner(GraphModule, return_numpy=True).cuda()
     # run on iree cuda backend
     input = flow.Tensor([-1.0, 1.0])
@@ -64,8 +78,11 @@ def _test_check_iree_runner(test_case):
 
 @flow.unittest.skip_unless_1n1d()
 class TestCheckIreeRunner(oneflow.unittest.TestCase):
-    def test_check_iree_runner(test_case):
-        _test_check_iree_runner(test_case)
+    def test_check_iree_runner_cpu(test_case):
+        _test_check_iree_runner_cpu(test_case)
+    @unittest.skipUnless(oneflow.sysconfig.with_cuda(), "only test cpu cases")
+    def test_check_iree_runner_cuda(test_case):
+        _test_check_iree_runner_cuda(test_case)
 
 
 if __name__ == "__main__":
