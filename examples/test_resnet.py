@@ -16,7 +16,7 @@ limitations under the License.
 # RUN: python3 %s
 
 from oneflow_iree.compiler import Runner
-from flowvision.models import resnet50
+from networks.resnet50 import resnet50
 import oneflow as flow
 import oneflow.unittest
 import unittest
@@ -29,7 +29,7 @@ os.environ["ONEFLOW_MLIR_ENABLE_CODEGEN_FUSERS"] = "1"
 
 
 def _test_iree_resnet_cpu(test_case):
-    model = resnet50(pretrained=True)
+    model = resnet50()
     model.eval()
 
     class GraphModuleForIree(flow.nn.Graph):
@@ -57,12 +57,12 @@ def _test_iree_resnet_cpu(test_case):
         graph_output = graph_output.cpu().detach().numpy()
         # the rtol accumulate layer by layer
         test_case.assertTrue(
-            np.allclose(iree_output, graph_output, rtol=1.0e-1, atol=1e-3)
+            np.allclose(iree_output, graph_output, rtol=1e-5, atol=1)
         )
 
 
 def _test_iree_resnet_cuda(test_case):
-    model = resnet50(pretrained=True).cuda()
+    model = resnet50().cuda()
     model.eval()
 
     class GraphModuleForIree(flow.nn.Graph):
@@ -90,7 +90,7 @@ def _test_iree_resnet_cuda(test_case):
         graph_output = graph_output.cpu().detach().numpy()
         # the rtol accumulate layer by layer
         test_case.assertTrue(
-            np.allclose(iree_output, graph_output, rtol=1.0e-1, atol=1e-3)
+            np.allclose(iree_output, graph_output, rtol=1e-3, atol=1)
         )
 
 
