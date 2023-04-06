@@ -22,8 +22,8 @@ class Iree(Backend):
         pass
 
     class Cpu(Target):
-        backend = ["dylib-llvm-aot"]
-        config = "dylib"
+        backend = ["llvm-cpu"]
+        config = "local-task"
 
     class Cuda(Target):
         backend = ["cuda"]
@@ -59,7 +59,9 @@ class Iree(Backend):
         )
 
     def _convert_flat_buffer_to_vm_module(self):
-        self.vm_module = ireert.VmModule.from_flatbuffer(self.flat_buffer)
+        config = ireert.Config(self.target.config)
+        # self.vm_module = ireert.VmModule.from_flatbuffer(self.flat_buffer)
+        self.vm_module = ireert.VmModule.from_flatbuffer(config.vm_instance, self.flat_buffer)
 
     def _get_job(self):
         self.job = self.graph._full_job_proto.SerializeToString()
