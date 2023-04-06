@@ -27,12 +27,15 @@ import time
 os.environ["ONEFLOW_MLIR_ENABLE_ROUND_TRIP"] = "1"
 os.environ["ONEFLOW_MLIR_ENABLE_CODEGEN_FUSERS"] = "1"
 
+def normalization(data):
+    _range = np.max(data) - np.min(data)
+    return (data - np.min(data)) / _range
 
 def _test_iree_resnet_cpu(test_case):
     model = resnet50()
     model.eval()
 
-    class GraphModuleForIree(flow.nn.Graph):
+    class GraphModuleForIreeCpu(flow.nn.Graph):
         def __init__(self):
             super().__init__()
             self.model = model
@@ -40,7 +43,7 @@ def _test_iree_resnet_cpu(test_case):
         def build(self, x):
             return self.model(x)
 
-    class GraphModuleForOFMLIR(flow.nn.Graph):
+    class GraphModuleForOFMLIRCpu(flow.nn.Graph):
         def __init__(self):
             super().__init__()
             self.model = model
@@ -48,16 +51,16 @@ def _test_iree_resnet_cpu(test_case):
         def build(self, x):
             return self.model(x)
 
-    func = Runner(GraphModuleForIree, return_numpy=True)
+    func = Runner(GraphModuleForIreeCpu, return_numpy=True)
     input = flow.ones([1, 3, 224, 224])
-    f = GraphModuleForOFMLIR()
-    for iter in range(2):
+    f = GraphModuleForOFMLIRCpu()
+    for _ in range(10):
         iree_output = func(input)
         graph_output = f(input)
         graph_output = graph_output.cpu().detach().numpy()
         # the rtol accumulate layer by layer
         test_case.assertTrue(
-            np.allclose(iree_output, graph_output, rtol=1e-5, atol=1)
+            np.allclose(normalization(iree_output), normalization(graph_output), atol=1e-6)
         )
 
 
@@ -65,7 +68,7 @@ def _test_iree_resnet_cuda(test_case):
     model = resnet50().cuda()
     model.eval()
 
-    class GraphModuleForIree(flow.nn.Graph):
+    class GraphModuleForIreeCuda(flow.nn.Graph):
         def __init__(self):
             super().__init__()
             self.model = model
@@ -73,7 +76,7 @@ def _test_iree_resnet_cuda(test_case):
         def build(self, x):
             return self.model(x)
 
-    class GraphModuleForOFMLIR(flow.nn.Graph):
+    class GraphModuleForOFMLIRCuda(flow.nn.Graph):
         def __init__(self):
             super().__init__()
             self.model = model
@@ -81,16 +84,15 @@ def _test_iree_resnet_cuda(test_case):
         def build(self, x):
             return self.model(x)
 
-    func = Runner(GraphModuleForIree, return_numpy=True)
+    func = Runner(GraphModuleForIreeCuda, return_numpy=True)
     input = flow.ones([1, 3, 224, 224]).cuda()
-    f = GraphModuleForOFMLIR()
-    for iter in range(2):
+    f = GraphModuleForOFMLIRCuda()
+    for _ in range(10):
         iree_output = func(input)
         graph_output = f(input)
         graph_output = graph_output.cpu().detach().numpy()
-        # the rtol accumulate layer by layer
         test_case.assertTrue(
-            np.allclose(iree_output, graph_output, rtol=1e-3, atol=1)
+            np.allclose(normalization(iree_output), normalization(graph_output), rtol=1e-4, atol=1e-5)
         )
 
 
