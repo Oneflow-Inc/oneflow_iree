@@ -16,8 +16,8 @@ import setuptools
 
 reqs = [
         'protobuf',
-        'iree-compiler==20230228.444',
-        'iree-runtime==20230228.444'
+        'iree-compiler==20230209.425',
+        'iree-runtime==20230209.425'
     ]
 
 long_description = (
