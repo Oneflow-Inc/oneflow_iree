@@ -25,7 +25,6 @@ import numpy as np
 import time
 
 os.environ["ONEFLOW_MLIR_ENABLE_ROUND_TRIP"] = "1"
-os.environ["ONEFLOW_MLIR_ENABLE_CODEGEN_FUSERS"] = "1"
 
 def normalization(data):
     _range = np.max(data) - np.min(data)
