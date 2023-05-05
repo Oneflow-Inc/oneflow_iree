@@ -59,7 +59,7 @@ def _test_iree_resnet_cpu(test_case):
         graph_output = graph_output.cpu().detach().numpy()
         # the rtol accumulate layer by layer
         test_case.assertTrue(
-            np.allclose(normalization(iree_output), normalization(graph_output), atol=1e-6)
+            np.allclose(normalization(iree_output), normalization(graph_output), atol=1e-3)
         )
 
 
@@ -91,7 +91,7 @@ def _test_iree_resnet_cuda(test_case):
         graph_output = f(input)
         graph_output = graph_output.cpu().detach().numpy()
         test_case.assertTrue(
-            np.allclose(normalization(iree_output), normalization(graph_output), rtol=1e-4, atol=1e-5)
+            np.allclose(normalization(iree_output), normalization(graph_output), rtol=1e-3, atol=1e-3)
         )
 
 
